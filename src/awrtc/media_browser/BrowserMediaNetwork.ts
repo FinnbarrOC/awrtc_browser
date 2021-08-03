@@ -27,7 +27,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-import { WebRtcNetwork, SLog, ConnectionId, SignalingConfig, IBasicNetwork, LocalNetwork, WebsocketNetwork, WebRtcDataPeer, Queue }
+import { WebRtcNetwork, SLog, ConnectionId, SignalingConfig, IBasicNetwork, LocalNetwork, WebsocketNetwork, WebRtcDataPeer, Queue, UnitySignalingNetwork }
     from "../network/index";
 import { IMediaNetwork, MediaConfigurationState, MediaEvent, MediaEventType } from "../media/IMediaNetwork";
 import { NetworkConfig } from "../media/NetworkConfig";
@@ -355,11 +355,20 @@ export class BrowserMediaNetwork extends WebRtcNetwork implements IMediaNetwork 
     private static BuildSignalingConfig(signalingUrl: string): SignalingConfig {
 
         let signalingNetwork: IBasicNetwork;
-        if (signalingUrl == null || signalingUrl == "") {
+        
+        if (signalingUrl == null || signalingUrl == "") 
+        {
             signalingNetwork = new LocalNetwork();
-        } else {
+        }
+        else if (signalingUrl == "UnitySignalingNetwork") 
+        {
+            signalingNetwork = new UnitySignalingNetwork();
+        }
+        else 
+        {
             signalingNetwork = new WebsocketNetwork(signalingUrl);
         }
+        
         return new SignalingConfig(signalingNetwork);
     }
 
