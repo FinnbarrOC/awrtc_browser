@@ -48,6 +48,8 @@ export enum WebRtcNetworkServerState {
 /// 
 /// </summary>
 export class WebRtcNetwork implements IBasicNetwork {
+    
+    public static SHARE_CONNECTION_IDS: boolean = true;  // Added to be consistent with native class AWebRtcNetwork
 
     private mTimeout = 60000;
 
@@ -332,7 +334,7 @@ export class WebRtcNetwork implements IBasicNetwork {
         let signalingConId = this.mSignalingNetwork.Connect(address);
         SLog.L("new outgoing connection");
         let info = new SignalingInfo(signalingConId, false, Date.now());
-        let peer = this.CreatePeer(this.NextConnectionId(), this.mRtcConfig);
+        let peer = this.CreatePeer(this.NextConnectionId(signalingConId), this.mRtcConfig);
         peer.SetSignalingInfo(info);
         this.mInSignaling[signalingConId.id] = peer;
         return peer.ConnectionId;
@@ -341,7 +343,7 @@ export class WebRtcNetwork implements IBasicNetwork {
     private AddIncomingConnection(signalingConId: ConnectionId): ConnectionId {
         SLog.L("new incoming connection");
         let info = new SignalingInfo(signalingConId, true, Date.now());
-        let peer = this.CreatePeer(this.NextConnectionId(), this.mRtcConfig);
+        let peer = this.CreatePeer(this.NextConnectionId(signalingConId), this.mRtcConfig);
         peer.SetSignalingInfo(info);
         this.mInSignaling[signalingConId.id] = peer;
         //passive way of starting signaling -> send out random number. if the other one does the same
@@ -392,7 +394,9 @@ export class WebRtcNetwork implements IBasicNetwork {
         this.mEvents.Enqueue(ev);
     }
 
-    private NextConnectionId(): ConnectionId {
+    private NextConnectionId(signalingId: ConnectionId): ConnectionId {
+        if (WebRtcNetwork.SHARE_CONNECTION_IDS)
+            return signalingId;
         let id = new ConnectionId(this.mNextId.id);
         this.mNextId.id++;
         return id;

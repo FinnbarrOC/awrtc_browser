@@ -73,9 +73,6 @@ class DisconnectStruct {
  */
 export class UnitySignalingNetwork {
 
-    private static mNextInstanceId: number = 1;
-    private mId: number;
-
     private mLocalServerAddress: string = null;
     private mLocalUnityId: ConnectionId;
 
@@ -86,9 +83,6 @@ export class UnitySignalingNetwork {
 
     public constructor(localUnityId: string) {
         this.mLocalUnityId = new ConnectionId(parseInt(localUnityId));
-
-        this.mId = UnitySignalingNetwork.mNextInstanceId;
-        UnitySignalingNetwork.mNextInstanceId++;
     }
 
     public get IsServer() {
@@ -132,7 +126,7 @@ export class UnitySignalingNetwork {
 
         return serverId;
     }
-    
+
     public ReceiveConnect(clientId: ConnectionId): void {
         if (this.IsServer == false) {
             console.error("Must be server to receive this connection");
@@ -170,7 +164,7 @@ export class UnitySignalingNetwork {
 
         return true;
     }
-    
+
     public ReceiveSignalingData(userId: ConnectionId, data: Uint8Array, reliable: boolean): void {
 
         let buffer = new Uint8Array(data.length);
@@ -216,7 +210,6 @@ export class UnitySignalingNetwork {
         this.mNetworkEventQueue.Enqueue(ev);
     }
 
-    // TODO: needs to be called by Unity somehow
     public ReceiveDisconnect(id: ConnectionId): void {
         if (id.id in this.mConnectedPlayerIds) {
             this.Enqueue(NetEventType.Disconnected, id, null);
