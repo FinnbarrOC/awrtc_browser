@@ -28,237 +28,174 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 import {ConnectionId, NetworkEvent, NetEventType} from "./index"
-import { Queue } from "./Helper";
+import {Queue} from "./Helper";
 
-interface IIdNetworkDictionary {
-    [id: number]: UnitySignalingNetwork;
-}
-interface IAddressNetworkDictionary {
-    [address: string]: UnitySignalingNetwork;
-}
+declare var unityInstance;  // Allows calling SendMessage() on the Unity game instance as defined in game's index.html
 
 /**Use instead of a WebsocketNetwork for signaling
  * within a Unity WebGL build using an in-game
  * networking solution (e.g. PUN2).
- * 
- * Remember to implement any methods you call here on the Unity side.
+ *
+ * Remember to implement any methods you call here on the Unity side
+ * in any class on a GameObject named "VoiceChatManager"
  */
 export class UnitySignalingNetwork {
-    private static sNextId:number = 1;
-    private static mServers = {} as IAddressNetworkDictionary;
 
-    private mId:number;
-    private mNextNetworkId = new ConnectionId(1);
-    private mServerAddress : string = null;
-    private mEvents = new Queue<NetworkEvent>();
-    private mConnectionNetwork = {} as IIdNetworkDictionary;
+    private static mNextInstanceId: number = 1;
+    private mId: number;
 
-    private mIsDisposed = false;
+    private mLocalServerAddress: string = null;
+    private mLocalUnityId: ConnectionId;
 
-    public constructor() {
+    private mNetworkEventQueue = new Queue<NetworkEvent>();
+    private mConnectedPlayerIds = new Set<ConnectionId>();
 
-        this.mId = UnitySignalingNetwork.sNextId;
-        UnitySignalingNetwork.sNextId++;
+    private mHasBeenDisposed = false;
+
+    public constructor(localUnityId: string) {
+        this.mLocalUnityId = new ConnectionId(parseInt(localUnityId));
+
+        this.mId = UnitySignalingNetwork.mNextInstanceId;
+        UnitySignalingNetwork.mNextInstanceId++;
     }
 
     public get IsServer() {
-        return this.mServerAddress != null;
+        return this.mLocalServerAddress != null;
     }
 
-
-    public StartServer(serverAddress: string = null): void
-    {
-        if (serverAddress == null)
-            serverAddress = "" + this.mId;
-
-        if (serverAddress in UnitySignalingNetwork.mServers) {
+    public StartServer(serverAddress: string = null): void {
+        if (serverAddress == null || serverAddress == "") {
             this.Enqueue(NetEventType.ServerInitFailed, ConnectionId.INVALID, serverAddress);
             return;
         }
 
-        UnitySignalingNetwork.mServers[serverAddress] = this;
-        this.mServerAddress = serverAddress;
+        this.mLocalServerAddress = serverAddress;
 
         this.Enqueue(NetEventType.ServerInitialized, ConnectionId.INVALID, serverAddress);
     }
-    public StopServer() : void
-    {
+
+    public StopServer(): void {
         if (this.IsServer) {
-            this.Enqueue(NetEventType.ServerClosed, ConnectionId.INVALID, this.mServerAddress);
-            delete UnitySignalingNetwork.mServers[this.mServerAddress];
-            this.mServerAddress = null;
+            this.Enqueue(NetEventType.ServerClosed, ConnectionId.INVALID, this.mLocalServerAddress);
+            this.mLocalServerAddress = null;
         }
     }
 
-    public Connect(address: string): ConnectionId
-    {
-        var connectionId = this.NextConnectionId();
+    public Connect(address: string): ConnectionId {
+        const serverId = new ConnectionId(parseInt(address.split('_').pop()));
 
-        var sucessful = false;
-        if (address in UnitySignalingNetwork.mServers) {
-            let server = UnitySignalingNetwork.mServers[address];
-            if (server != null) {
-                server.ConnectClient(this);
-                //add the server as local connection
-                this.mConnectionNetwork[connectionId.id] = UnitySignalingNetwork.mServers[address];
-                this.Enqueue(NetEventType.NewConnection, connectionId, null);
-                sucessful = true;
-            }
+        if (this.IsServer == true) {
+            console.error("Must be client to send this connection");
+            return serverId;
         }
 
-        if (sucessful == false) {
-            this.Enqueue(NetEventType.ConnectionFailed, connectionId, "Couldn't connect to the given server with id " + address);
-        }
+        this.mConnectedPlayerIds.add(serverId);
 
-        return connectionId;
+        console.log("Creating outgoing connection to " + address + " id: " + serverId);
+
+        this.Enqueue(NetEventType.NewConnection, serverId, null);
+
+        // TODO: can add more error checking and call this
+        // this.Enqueue(NetEventType.ConnectionFailed, serverId, "Couldn't connect to server at address " + address);
+
+        return serverId;
     }
-        
-    public  Shutdown() : void
-    {
-        for(var id in this.mConnectionNetwork) //can be changed while looping?
-        {
-            this.Disconnect(new ConnectionId(+id));
+    
+    // TODO: needs to be called by Unity somehow
+    private ReceiveConnect(clientId: ConnectionId): void {
+        if (this.IsServer == false) {
+            console.error("Must be server to receive this connection");
+            return;
         }
-        //this.mConnectionNetwork.Clear();
+
+        this.mConnectedPlayerIds.add(clientId);
+
+        console.log("New incoming connection with id " + clientId);
+
+        this.Enqueue(NetEventType.NewConnection, clientId, null);
+
+        // TODO: can add more error checking and call this
+        // this.Enqueue(NetEventType.ConnectionFailed, clientId, "Couldn't connect to client with id " + clientId);
+    }
+
+    public Shutdown(): void {
+        console.log("Shutdown called");
+        for (let connectionId of Array.from(this.mConnectedPlayerIds)) {
+            this.Disconnect(connectionId);
+        }
+
+        this.mConnectedPlayerIds.clear();
         this.StopServer();
     }
 
-    public Dispose() : void{
-        if (this.mIsDisposed == false) {
-            this.Shutdown();
-        }
+    public SendData(userId: ConnectionId, data: Uint8Array, reliable: boolean): boolean {
+
+        const serverId = this.IsServer ? this.mLocalUnityId.id : userId.id;
+
+        // TODO: these methods are called with SendMessage, so can only take one parameter. Use JSON to pass everything
+        unityInstance.SendMessage("VoiceChatManager", "SendSignalingData",
+            serverId, userId.id, this.mLocalUnityId.id, data.buffer, data.byteOffset, data.byteLength, reliable);
+
+        return true;
     }
 
-    public SendData(userId: ConnectionId, data: Uint8Array, reliable: boolean): boolean
-    {
+    // TODO: needs to be called by Unity somehow
+    public ReceiveSignalingData(userId: ConnectionId, data: ArrayBufferLike, offset: number, length: number, reliable: boolean): void {
 
-        if (userId.id in this.mConnectionNetwork)
-        {
-                let net = this.mConnectionNetwork[userId.id];
-                net.ReceiveData(this, data,  reliable);
-                return true;
-        }
-        return false;
-    }
+        let buffer = new Uint8Array(data, offset, length);
 
-    public Update(): void
-    {
-        //work around for the GarbageCollection bug
-        //usually weak references are removed during garbage collection but that
-        //fails sometimes as others weak references get null to even though
-        //the objects still exist!
-        this.CleanupWreakReferences();
-    }
+        let type = reliable ? NetEventType.ReliableMessageReceived : NetEventType.UnreliableMessageReceived;
 
-    public Dequeue(): NetworkEvent
-    {
-        return this.mEvents.Dequeue();
-    }
-    public Peek(): NetworkEvent
-    {
-        return this.mEvents.Peek();
-    }
-
-
-    public Flush(): void
-    {
-
-    }
-
-    public Disconnect(id: ConnectionId): void
-    {
-        if (id.id in this.mConnectionNetwork) {
-            let other = this.mConnectionNetwork[id.id];
-            if (other != null) {
-                other.InternalDisconnectNetwork(this);
-                this.InternalDisconnect(id);
-            }
-            else {
-                //this is suppose to never happen but it does
-                //if a server is destroyed by the garbage collector the client
-                //weak reference appears to be NULL even though it still exists
-                //bug?
-                this.CleanupWreakReferences();
-            }
-        }
-    }
-
-
-    private FindConnectionId(network: UnitySignalingNetwork): ConnectionId
-    {
-        for(var kvp in this.mConnectionNetwork)
-        {
-            let network = this.mConnectionNetwork[kvp];
-            if (network != null) {
-                return new ConnectionId(+kvp);
-            }
-        }
-        return ConnectionId.INVALID;
-    }
-    
-
-    private NextConnectionId(): ConnectionId
-    {
-        let res = this.mNextNetworkId;
-        this.mNextNetworkId = new ConnectionId(res.id + 1); 
-        return res;
-    }
-
-
-    private ConnectClient(client: UnitySignalingNetwork): void
-    {
-        //if (this.IsServer == false)
-        //    throw new InvalidOperationException();
-
-        let nextId = this.NextConnectionId();
-        //server side only
-        this.mConnectionNetwork[nextId.id] = client;
-        this.Enqueue(NetEventType.NewConnection, nextId, null);
-    }
-
-    private Enqueue(type: NetEventType, id: ConnectionId, data: any): void
-    {
-        let ev = new NetworkEvent(type, id, data);
-        this.mEvents.Enqueue(ev);
-    }
-
-    private ReceiveData(network: UnitySignalingNetwork, data: Uint8Array, reliable : boolean): void
-    {
-        let userId = this.FindConnectionId(network);
-
-        let buffer = new Uint8Array(data.length);
-        for (let i = 0; i < buffer.length; i++) {
-            buffer[i] = data[i];
-        }
-
-
-        let type = NetEventType.UnreliableMessageReceived;
-        if (reliable)
-            type = NetEventType.ReliableMessageReceived;
         this.Enqueue(type, userId, buffer);
     }
-    private InternalDisconnect(id: ConnectionId): void
-    {
-        if (id.id in this.mConnectionNetwork) {
-            this.Enqueue(NetEventType.Disconnected, id, null);
-            delete this.mConnectionNetwork[id.id];
+
+    public Dequeue(): NetworkEvent {
+        return this.mNetworkEventQueue.Dequeue();
+    }
+
+    public Peek(): NetworkEvent {
+        return this.mNetworkEventQueue.Peek();
+    }
+
+
+    public Flush(): void {
+
+    }
+
+    public Disconnect(id: ConnectionId): void {
+        if (this.mConnectedPlayerIds.has(id)) {
+
+            // Local player disconnects from the other player
+            this.ReceiveDisconnect(id);
+
+            const serverId = this.IsServer ? this.mLocalUnityId.id : id.id;
+
+            // TODO: these methods are called with SendMessage, so can only take one parameter. Use JSON to pass everything
+            unityInstance.SendMessage("VoiceChatManager", "SendDisconnect",
+                serverId, id.id, this.mLocalUnityId.id);
         }
     }
 
-    private InternalDisconnectNetwork(ln: UnitySignalingNetwork): void
-    {
-        //if it can't be found it will return invalid which is ignored in internal disconnect
-        this.InternalDisconnect(this.FindConnectionId(ln));
+    private Enqueue(type: NetEventType, id: ConnectionId, data: any): void {
+        let ev = new NetworkEvent(type, id, data);
+        this.mNetworkEventQueue.Enqueue(ev);
     }
 
-    private CleanupWreakReferences(): void
-    {
-        //foreach(var kvp in mConnectionNetwork.Keys.ToList())
-        //{
-        //    var val = mConnectionNetwork[kvp];
-        //    if (val.Get() == null) {
-        //        InternalDisconnect(kvp);
-        //    }
-        //}
+    // TODO: needs to be called by Unity somehow
+    public ReceiveDisconnect(id: ConnectionId): void {
+        if (id.id in this.mConnectedPlayerIds) {
+            this.Enqueue(NetEventType.Disconnected, id, null);
+            delete this.mConnectedPlayerIds[id.id];
+        }
+    }
+
+    public Update(): void {
+
+    }
+
+    public Dispose(): void {
+        if (this.mHasBeenDisposed == false) {
+            this.Shutdown();
+        }
     }
 }

@@ -360,9 +360,10 @@ export class BrowserMediaNetwork extends WebRtcNetwork implements IMediaNetwork 
         {
             signalingNetwork = new LocalNetwork();
         }
-        else if (signalingUrl == "UnitySignalingNetwork") 
+        else if (signalingUrl.startsWith("UnitySignalingNetwork_")) 
         {
-            signalingNetwork = new UnitySignalingNetwork();
+            // The signalingUrl must contain the local player's Unity Id, e.g. "UnitySignalingNetwork_9999"
+            signalingNetwork = new UnitySignalingNetwork(signalingUrl.replace("UnitySignalingNetwork_", ""));
         }
         else 
         {
