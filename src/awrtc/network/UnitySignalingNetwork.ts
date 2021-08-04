@@ -123,7 +123,7 @@ export class UnitySignalingNetwork {
 
         this.mConnectedPlayerIds.add(serverId);
 
-        console.log("Creating outgoing connection to " + address + " id: " + serverId);
+        console.log("Creating outgoing connection to " + address + " id: " + serverId.id);
 
         this.Enqueue(NetEventType.NewConnection, serverId, null);
 
@@ -132,9 +132,8 @@ export class UnitySignalingNetwork {
 
         return serverId;
     }
-
-    // TODO: needs to be called by Unity somehow
-    private ReceiveConnect(clientId: ConnectionId): void {
+    
+    public ReceiveConnect(clientId: ConnectionId): void {
         if (this.IsServer == false) {
             console.error("Must be server to receive this connection");
             return;
@@ -142,7 +141,7 @@ export class UnitySignalingNetwork {
 
         this.mConnectedPlayerIds.add(clientId);
 
-        console.log("New incoming connection with id " + clientId);
+        console.log("New incoming connection with id " + clientId.id);
 
         this.Enqueue(NetEventType.NewConnection, clientId, null);
 
@@ -171,11 +170,13 @@ export class UnitySignalingNetwork {
 
         return true;
     }
+    
+    public ReceiveSignalingData(userId: ConnectionId, data: Uint8Array, reliable: boolean): void {
 
-    // TODO: needs to be called by Unity somehow
-    public ReceiveSignalingData(userId: ConnectionId, data: ArrayBufferLike, offset: number, length: number, reliable: boolean): void {
-
-        let buffer = new Uint8Array(data, offset, length);
+        let buffer = new Uint8Array(data.length);
+        for (let i = 0; i < buffer.length; i++) {
+            buffer[i] = data[i];
+        }
 
         let type = reliable ? NetEventType.ReliableMessageReceived : NetEventType.UnreliableMessageReceived;
 

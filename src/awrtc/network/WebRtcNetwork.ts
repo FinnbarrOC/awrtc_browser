@@ -94,6 +94,10 @@ export class WebRtcNetwork implements IBasicNetwork {
         this.mServerState = WebRtcNetworkServerState.Starting;
         this.mSignalingNetwork.StartServer(address);
     }
+    
+    public GetSignalingNetwork(): IBasicNetwork {
+        return this.mSignalingNetwork;
+    }
 
     public StopServer(): void {
         if (this.mServerState == WebRtcNetworkServerState.Starting) {

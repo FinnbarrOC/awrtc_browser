@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /**This file contains the mapping between the awrtc_browser library and
  * Unitys WebGL support. Not needed for regular use.
  */
-import { SLog, WebRtcNetwork, SignalingConfig, NetworkEvent, ConnectionId, LocalNetwork, WebsocketNetwork } from "../network/index"
+import { SLog, WebRtcNetwork, SignalingConfig, NetworkEvent, ConnectionId, LocalNetwork, WebsocketNetwork, UnitySignalingNetwork } from "../network/index"
 import { MediaConfigurationState, NetworkConfig, MediaConfig } from "../media/index";
 import { BrowserMediaStream, BrowserMediaNetwork, DeviceApi, BrowserWebRtcCall, Media, VideoInputType } from "../media_browser/index";
 
@@ -379,10 +379,32 @@ export function CAPI_MediaNetwork_Create(lJsonConfiguration): number {
 }
 
 
+export function CAPI_MediaNetwork_ReceiveSignalingConnect(lIndex: number, clientId: number): void {
 
+    let mediaNetwork = gCAPI_WebRtcNetwork_Instances[lIndex] as BrowserMediaNetwork;
 
+    (mediaNetwork.GetSignalingNetwork() as UnitySignalingNetwork)
+        ?.ReceiveConnect(new ConnectionId(clientId));
+}
 
+export function CAPI_MediaNetwork_ReceiveSignalingData(lIndex: number, senderId: number, data: Uint8Array, 
+                                                       offset: number, length: number, reliable: boolean): void {
 
+    let mediaNetwork = gCAPI_WebRtcNetwork_Instances[lIndex] as BrowserMediaNetwork;
+    
+    let buffer = new Uint8Array(data.buffer, offset, length);
+
+    (mediaNetwork.GetSignalingNetwork() as UnitySignalingNetwork)
+        ?.ReceiveSignalingData(new ConnectionId(senderId), buffer, reliable);
+}
+
+export function CAPI_MediaNetwork_ReceiveSignalingDisconnect(lIndex: number, disconnectingId: number): void {
+
+    let mediaNetwork = gCAPI_WebRtcNetwork_Instances[lIndex] as BrowserMediaNetwork;
+
+    (mediaNetwork.GetSignalingNetwork() as UnitySignalingNetwork)
+        ?.ReceiveDisconnect(new ConnectionId(disconnectingId));
+}
 
 //Configure(config: MediaConfig): void;
 export function CAPI_MediaNetwork_Configure(lIndex: number, audio: boolean, video: boolean,
