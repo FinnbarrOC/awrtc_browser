@@ -32,6 +32,38 @@ import {Queue} from "./Helper";
 
 declare var unityInstance;  // Allows calling SendMessage() on the Unity game instance as defined in game's index.html
 
+class SignalingDataStruct {
+    ServerId: number;
+    RecipientId: number;
+    SenderId: number;
+    Data: number[];
+    Offset: number;
+    Length: number;
+    Reliable: boolean;
+
+    constructor(serverId: number, recipientId: number, senderId: number, data: Uint8Array, reliable: boolean) {
+        this.ServerId = serverId;
+        this.RecipientId = recipientId;
+        this.SenderId = senderId;
+        this.Data = Array.from(data);
+        this.Offset = data.byteOffset;
+        this.Length = data.byteLength;
+        this.Reliable = reliable;
+    }
+}
+
+class DisconnectStruct {
+    ServerId: number;
+    RecipientId: number;
+    DisconnectingId: number;
+
+    constructor(serverId: number, recipientId: number, disconnectingId: number) {
+        this.ServerId = serverId;
+        this.RecipientId = recipientId;
+        this.DisconnectingId = disconnectingId;
+    }
+}
+
 /**Use instead of a WebsocketNetwork for signaling
  * within a Unity WebGL build using an in-game
  * networking solution (e.g. PUN2).
@@ -100,7 +132,7 @@ export class UnitySignalingNetwork {
 
         return serverId;
     }
-    
+
     // TODO: needs to be called by Unity somehow
     private ReceiveConnect(clientId: ConnectionId): void {
         if (this.IsServer == false) {
@@ -132,9 +164,10 @@ export class UnitySignalingNetwork {
 
         const serverId = this.IsServer ? this.mLocalUnityId.id : userId.id;
 
-        // TODO: these methods are called with SendMessage, so can only take one parameter. Use JSON to pass everything
-        unityInstance.SendMessage("VoiceChatManager", "SendSignalingData",
-            serverId, userId.id, this.mLocalUnityId.id, data.buffer, data.byteOffset, data.byteLength, reliable);
+        const signalingDataStruct = new SignalingDataStruct(serverId, userId.id, this.mLocalUnityId.id, data, reliable);
+
+        // Unity methods called with SendMessage can ONLY take one parameter, so pass everything as JSON
+        unityInstance.SendMessage("VoiceChatManager", "SendSignalingData", JSON.stringify(signalingDataStruct));
 
         return true;
     }
@@ -170,9 +203,10 @@ export class UnitySignalingNetwork {
 
             const serverId = this.IsServer ? this.mLocalUnityId.id : id.id;
 
-            // TODO: these methods are called with SendMessage, so can only take one parameter. Use JSON to pass everything
-            unityInstance.SendMessage("VoiceChatManager", "SendDisconnect",
-                serverId, id.id, this.mLocalUnityId.id);
+            const disconnectStruct = new DisconnectStruct(serverId, id.id, this.mLocalUnityId.id);
+
+            // Unity methods called with SendMessage can ONLY take one parameter, so pass everything as JSON
+            unityInstance.SendMessage("VoiceChatManager", "SendDisconnect", JSON.stringify(disconnectStruct));
         }
     }
 
