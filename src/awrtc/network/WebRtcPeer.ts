@@ -854,9 +854,10 @@ export class WebRtcDataPeer extends AWebRtcPeer {
         this.RtcSetClosed();
     }
 
-    private ReliableDataChannel_OnError(errorMsg: string) : void
-    {
-        Debug.LogError(errorMsg);
+    private ReliableDataChannel_OnError(errorMsg: string) : void {
+        if (errorMsg && errorMsg.length > 0) {
+            Debug.LogError(errorMsg);
+        }
         this.RtcSetClosed();
     }
 
@@ -879,7 +880,9 @@ export class WebRtcDataPeer extends AWebRtcPeer {
     }
 
     private UnreliableDataChannel_OnError(errorMsg: string): void {
-        Debug.LogError(errorMsg);
+        if (errorMsg && errorMsg.length > 0) {
+            Debug.LogError(errorMsg);
+        }
         this.RtcSetClosed();
     }
 
