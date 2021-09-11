@@ -204,7 +204,7 @@ export class BrowserMediaStream {
             if(this.mFrameEventMethod === FrameEventMethod.DEFAULT_FALLBACK)
             {
                 //firefox and co won't tell us the FPS for remote stream
-                SLog.LW("Framerate unknown for stream " + this.mInstanceId + ". Using default framerate of " + BrowserMediaStream.DEFAULT_FRAMERATE);
+                // SLog.LW("Framerate unknown for stream " + this.mInstanceId + ". Using default framerate of " + BrowserMediaStream.DEFAULT_FRAMERATE);
             }
         }
     }
