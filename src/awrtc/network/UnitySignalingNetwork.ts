@@ -77,7 +77,7 @@ export class UnitySignalingNetwork {
     private mLocalUnityId: ConnectionId;
 
     private mNetworkEventQueue = new Queue<NetworkEvent>();
-    private mConnectedPlayerIds = new Set<ConnectionId>();
+    private mInSignalingPlayerIds = new Set<ConnectionId>();
 
     private mHasBeenDisposed = false;
 
@@ -115,7 +115,8 @@ export class UnitySignalingNetwork {
             return serverId;
         }
 
-        this.mConnectedPlayerIds.add(serverId);
+        if (this.mInSignalingPlayerIds.has(serverId)) return ConnectionId.INVALID;
+        this.mInSignalingPlayerIds.add(serverId);
 
         console.log("Creating outgoing connection to " + address + " id: " + serverId.id);
 
@@ -133,7 +134,8 @@ export class UnitySignalingNetwork {
             return;
         }
 
-        this.mConnectedPlayerIds.add(clientId);
+        if (this.mInSignalingPlayerIds.has(clientId)) return;
+        this.mInSignalingPlayerIds.add(clientId);
 
         console.log("New incoming connection with id " + clientId.id);
 
@@ -145,11 +147,11 @@ export class UnitySignalingNetwork {
 
     public Shutdown(): void {
         console.log("Shutdown called");
-        for (let connectionId of Array.from(this.mConnectedPlayerIds)) {
+        for (let connectionId of Array.from(this.mInSignalingPlayerIds)) {
             this.Disconnect(connectionId);
         }
 
-        this.mConnectedPlayerIds.clear();
+        this.mInSignalingPlayerIds.clear();
         this.StopServer();
     }
 
@@ -191,7 +193,7 @@ export class UnitySignalingNetwork {
     }
 
     public Disconnect(id: ConnectionId): void {
-        if (this.mConnectedPlayerIds.has(id)) {
+        if (this.mInSignalingPlayerIds.has(id)) {
 
             // Local player disconnects from the other player
             this.ReceiveDisconnect(id);
@@ -211,9 +213,9 @@ export class UnitySignalingNetwork {
     }
 
     public ReceiveDisconnect(id: ConnectionId): void {
-        if (id.id in this.mConnectedPlayerIds) {
+        if (this.mInSignalingPlayerIds.has(id)) {
             this.Enqueue(NetEventType.Disconnected, id, null);
-            delete this.mConnectedPlayerIds[id.id];
+            delete this.mInSignalingPlayerIds[id.id];
         }
     }
 
