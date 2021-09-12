@@ -301,10 +301,8 @@ export class WebRtcNetwork implements IBasicNetwork {
                     let msg = this.BufferToString(evt.MessageData);
                     peer.AddSignalingMessage(msg);
                 } else {
-                    // Ignore warnings if we're getting unknown signaling messages but are already connected to id
-                    if (this.mConnectionIds.indexOf(evt.ConnectionId) < 0) {
-                        SLog.LogWarning("Signaling message from unknown connection received, id: " + evt.ConnectionId.id);
-                    }
+                    // No longer logging warnings for this because it happens randomly and is not problematic
+                    // SLog.LogWarning("Signaling message from unknown connection received, id: " + evt.ConnectionId.id);
                 }
             }
         }

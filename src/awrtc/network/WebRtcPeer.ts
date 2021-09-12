@@ -380,8 +380,7 @@ export abstract class AWebRtcPeer {
                 this.EnqueueOutgoing(msg);
             });
             setDescPromise.catch((error: DOMError) => {
-                Debug.LogWarning(error);  // Changed to warning because it happens often and is expected/accounted for
-                // Debug.LogError("Error during setLocalDescription with sdp: " + JSON.stringify(desc_in));
+                Debug.LogWarning(error);
                 this.RtcSetSignalingFailed();
             });
         });
@@ -523,7 +522,7 @@ export abstract class AWebRtcPeer {
                     this.EnqueueOutgoing(msg);
                 });
                 localDescPromise.catch((error: DOMError) => {
-                    Debug.LogError(error);
+                    Debug.LogWarning(error);
                     this.RtcSetSignalingFailed();
                 });
                 
@@ -550,7 +549,7 @@ export abstract class AWebRtcPeer {
             this.StartIce();
         });
         remoteDescPromise.catch((error: DOMError) => {
-            Debug.LogError(error);
+            Debug.LogWarning(error);
             this.RtcSetSignalingFailed();
         });
         

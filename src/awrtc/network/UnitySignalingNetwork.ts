@@ -118,7 +118,7 @@ export class UnitySignalingNetwork {
         if (this.mInSignalingPlayerIds.has(serverId)) return ConnectionId.INVALID;
         this.mInSignalingPlayerIds.add(serverId);
 
-        console.log("Creating outgoing connection to " + address + " id: " + serverId.id);
+        // console.log("Creating outgoing connection to " + address + " id: " + serverId.id);
 
         this.Enqueue(NetEventType.NewConnection, serverId, null);
 
@@ -137,7 +137,7 @@ export class UnitySignalingNetwork {
         if (this.mInSignalingPlayerIds.has(clientId)) return;
         this.mInSignalingPlayerIds.add(clientId);
 
-        console.log("New incoming connection with id " + clientId.id);
+        // console.log("New incoming connection with id " + clientId.id);
 
         this.Enqueue(NetEventType.NewConnection, clientId, null);
 
@@ -146,7 +146,7 @@ export class UnitySignalingNetwork {
     }
 
     public Shutdown(): void {
-        console.log("Shutdown called");
+        // console.log("Shutdown called");
         for (let connectionId of Array.from(this.mInSignalingPlayerIds)) {
             this.Disconnect(connectionId);
         }
