@@ -115,7 +115,6 @@ export class UnitySignalingNetwork {
             return serverId;
         }
 
-        if (this.mInSignalingPlayerIds.has(serverId)) return ConnectionId.INVALID;
         this.mInSignalingPlayerIds.add(serverId);
 
         // console.log("Creating outgoing connection to " + address + " id: " + serverId.id);
@@ -134,7 +133,6 @@ export class UnitySignalingNetwork {
             return;
         }
 
-        if (this.mInSignalingPlayerIds.has(clientId)) return;
         this.mInSignalingPlayerIds.add(clientId);
 
         // console.log("New incoming connection with id " + clientId.id);
